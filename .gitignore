@@ -1,0 +1,11 @@
+.terraform/
+
+# init files
+.terraform.*
+.terraform.lock.hcl
+
+# states files
+terraform.*
+
+# lambda zips
+*.zip
