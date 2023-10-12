@@ -1,0 +1,133 @@
+{
+  "Comment": "This is ASL for step function definition.",
+  "StartAt": "CheckStepToExecute",
+  "States": {
+    "CheckStepToExecute": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.step_to_execute",
+          "IsPresent": true,
+          "Next": "CheckStep"
+        },
+        {
+          "Variable": "$.step_to_execute",
+          "IsPresent": false,
+          "Next": "CheckInput"
+        }
+      ]
+    },
+    "CheckInput": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.client_name",
+          "IsPresent": false,
+          "Next": "FailedState"
+        }
+      ],
+      "Default": "Lambda_one"
+    },
+    "CheckStep": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.client_name",
+          "IsPresent": false,
+          "Next": "FailedState"
+        },
+        {
+          "Variable": "$.step_to_execute",
+          "StringEquals": "Lambda_one",
+          "Next": "Lambda_one"
+        },
+        {
+          "Variable": "$.step_to_execute",
+          "StringEquals": "Lambda_two",
+          "Next": "Lambda_two"
+        }
+      ],
+      "Default": "FailedState"
+    },
+    "Lambda_one": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:${aws_region}:${aws_account_id}:function:lambda_one:$LATEST",
+      "Parameters": {
+        "client_name.$": "$.client_name"
+      },
+      "ResultPath": "$.LambdaOne_Output",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 3,
+          "MaxAttempts": 3
+        }
+      ],
+      "Next": "Check_LambdaOne_Output"
+    },
+    "Check_LambdaOne_Output": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.LambdaOne_Output",
+          "IsNull": false,
+          "Next": "Lambda_two"
+        },
+        {
+          "Variable": "$.LambdaOne_Outpur",
+          "IsNull": true,
+          "Next": "FailedLambdaState"
+        }
+      ]
+    },
+    "Lambda_two": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:${aws_region}:${aws_account_id}:function:lambda_two:$LATEST",
+      "Parameters": {
+        "client_name.$": "$.client_name"
+      },
+      "ResultPath": "$.LambdaTwo_Output",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 3,
+          "MaxAttempts": 3
+        }
+      ],
+      "Next": "Check_LambdaTwo_Output"
+    },
+    "Check_LambdaTwo_Output": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.LambdaTwo_Output",
+          "IsNull": false,
+          "Next": "SuccessState"
+        },
+        {
+          "Variable": "$.LambdaTwo_Output",
+          "IsNull": true,
+          "Next": "FailedLambdaState"
+        }
+      ]
+    },
+    "SuccessState": {
+      "Type": "Pass",
+      "End": true
+    },
+    "FailedLambdaState": {
+      "Type": "Fail",
+      "Error": "Lambda Execution Failed.",
+      "Cause": "Unexpected Lambda Output."
+    },
+    "FailedState": {
+      "Type": "Fail",
+      "Error": "Error Occured while running step function.",
+      "Cause": "Invalid Input"
+    }
+  }
+}
